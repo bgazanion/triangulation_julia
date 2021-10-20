@@ -20,10 +20,6 @@ end
 
 end # module
 
-# set log level to WARNING for the module
-
-#ENV["JULIA_WARNING"] = Triangulation
-
 # CLI call from a terminal: call the main function with CLI args
 if abspath(PROGRAM_FILE) == @__FILE__
     Triangulation.julia_main()

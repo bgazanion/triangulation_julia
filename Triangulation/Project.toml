@@ -1,6 +1,6 @@
 name = "Triangulation"
 uuid = "14502c91-125e-4455-a979-c08d9255ba52"
-authors = ["bgazanio "]
+authors = ["bertrand gazanion"]
 version = "0.1.0"
 
 [deps]

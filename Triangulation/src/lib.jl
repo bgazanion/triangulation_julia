@@ -12,7 +12,24 @@ import Glob.glob
 
 #------------------------------------------------------------------------------
 # Datastructures and functions related to delaunay triangulation
+# - Edge: structure used to describe an edge
+# - Triangule: structure used to describe a triangle
+# - create_nodes: create a set of random nodes
+# - in_circumcircle: find if a node is in the circumcircle of a triangle
+# - is_clockwise: find if a set of 3 nodes is ordered clockwise
+# - create_supertriangle: create a triangle containing all the nodes
+# - require_flip: tell if two neighbor triangles need to be flipped because
+#   they don't follow the criterion on opposite angles
+# - compute_angle: compute the angle (in radians) between two edges
+# - get_tri_node_ids: get the ids of the nodes of a triangle
+# - get_triangulation_nodes: get the ids of the nodes used in a triangulation
+# - flip_triangulation!: flip the triangles of the triangulation when needed
+# - save_step: save the details of a step of the triangulation to a file
+# - plot_step: create a visualization for a step of the triangulation
+# - inside_triangle: find if a node is located inside a triangle
+# - triangulate: create the triangulation of a set of nodes
 #------------------------------------------------------------------------------
+
 
 struct Edge
     # Note: possible improvement using static arrays to nodes and in_triangles
@@ -122,17 +139,6 @@ function create_supertriangle(nodes)
     return [tri_lower_right, tri_top, tri_lower_left]
 end
 
-function plot_start(nodes, tri)
-    # plot the supertriangle and the nodes
-    # - nodes : coordinates of the nodes - Array(n, 2) of floats
-    # - tri : coordinates of the vertices of the triangle - array containing 3 doubles
-    Plots.scatter(nodes[:,1], nodes[:,2], label="")
-    Plots.plot!([tri[1][1], tri[2][1]], [tri[1][2], tri[2][2]], label="", color=:black)
-    Plots.plot!([tri[2][1], tri[3][1]], [tri[2][2], tri[3][2]], label="", color=:black)
-    Plots.plot!([tri[3][1], tri[1][1]], [tri[3][2], tri[1][2]], label="", color=:black)
-    #Plots.plot!(supertriangle[2], supertriangle[3])
-    #Plots.plot!(supertriangle[3], supertriangle[1])
-end
 
 function require_flip(tri1_id, tri2_id, triangles, edges, nodes)
     # Evaluate if the triangles must be flipped, that is to say if the opposite angles don't
@@ -457,20 +463,6 @@ function plot_step(step_file, show_non_delaunay_triangles)
 end
 
 
-# TODO: remove -> use instead loop on globbed files + plot_step
-function plot_several_steps(file_pattern, show_non_delaunay_triangles)
-    # plot the step files matching the input pattern (eg "./steps/step_.txt")
-    file_pattern_basename = splitext(basename(file_pattern))[1]
-    file_pattern_end = splitext(basename(file_pattern))[2]
-    for step_file in readdir(dirname(file_pattern), join=true)
-        if startswith(basename(step_file), file_pattern_basename) && endswith(step_file, file_pattern_end)
-            println("Plot step file: ", step_file)
-            plot_step(step_file, show_non_delaunay_triangles)
-        end
-    end
-end
-
-
 function inside_triangle(triangle_ids, node_id, nodes)
     # Evaluate if a node is inside a triangle using barycentric coordinates method
     # https://en.wikipedia.org/wiki/Barycentric_coordinate_system
@@ -622,8 +614,6 @@ function triangulate(input_nodes, must_save_steps=false, step_file_pattern="./st
 
         # - update the new edges: neighbor triangles
         for i_new_edge in new_edges_ids
-            #tri_neighbors = [t_id for t_id in edges[i_new_edge].in_triangles 
-            #                 if t_id != parent_tri_id &&  t_id != 0]
             
             # find the new triangle containing this edge
             tri_neighbors = []
@@ -713,8 +703,6 @@ function triangulate(input_nodes, must_save_steps=false, step_file_pattern="./st
         save_step(step_file_pattern, "final", nodes, 0, edges, [], [], [], triangles)
     end
 
-    # TODO: return results
-
     return edges, triangles
 end
 
@@ -727,7 +715,6 @@ end
 #   parse_args's output
 # - get_main_parameters: get the CLI parameters from the user's input string
 # - main: perform the operation requested by the user
-# - test_main: unit tests from the functions of this file
 #------------------------------------------------------------------------------
 
 
@@ -1052,50 +1039,6 @@ function main(args)
     end
 end
 ;
-
-
-
-function create_logger(log_file::String, log_min_level::Base.CoreLogging.LogLevel)
-    # create a logger thats prints formatted output to console and file
-    # see below for the combination of FormatLogger and other logged_test_triangulate
-    # https://discourse.julialang.org/t/combination-of-formatlogger-and-filelogger-in-loggingextras/60654/2
-    # - log_file: path of the log file
-    function fmt(io, args)
-        println(io, args._module, " | ", "[", args.level, "] ", args.message)
-    end
-
-    logger = TeeLogger(
-        MinLevelLogger(FormatLogger(fmt, open(log_file, "w")), log_min_level),
-        MinLevelLogger(FormatLogger(fmt, stdout), log_min_level)   # formatted but no color in REPL
-        #global_logger()     # unformatted by color in REPL
-    )
-    return logger
-end
-
-
-# TODO: delete this function but keep the log redirection part for the main fct
-function logged_test_triangulate(number_of_nodes, x_bounds, y_bounds, save_steps)
-    # manual solution if the function outputs logs with prints
-    #=
-    open("test_triangulate.log", "w") do io
-        redirect_stdout(io) do
-            test_triangulate(number_of_nodes, x_bounds, y_bounds, save_steps)
-        end
-    end
-    =#
-
-    # clean solution
-    log_file = "test_triangulate.log"
-    logger = create_logger(log_file, Logging.Info)
-
-    formatConsoleLogger = FormatLogger() do io, args
-        println(io, args._module, " | ", "[", args.level, "] ", args.message)
-    end
-
-    with_logger(logger) do
-        test_triangulate(number_of_nodes, x_bounds, y_bounds, save_steps)
-    end
-end
 
 
 # CLI call from a terminal: call the main function with CLI args
